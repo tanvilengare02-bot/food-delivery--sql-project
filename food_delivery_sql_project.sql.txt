@@ -1,0 +1,522 @@
+-- ============================================================
+--   ONLINE FOOD DELIVERY SQL PROJECT
+--   All Phases: Setup → Analysis → Optimization → Triggers
+-- ============================================================
+
+-- ============================================================
+-- PHASE 1: DATABASE & TABLE SETUP
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS food_delivery_db;
+USE food_delivery_db;
+
+-- Customers Table
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id     INT PRIMARY KEY AUTO_INCREMENT,
+    customer_name   VARCHAR(100) NOT NULL,
+    email           VARCHAR(150) UNIQUE,
+    phone           VARCHAR(20),
+    city            VARCHAR(50),
+    registration_date DATE
+);
+
+-- Restaurants Table
+CREATE TABLE IF NOT EXISTS restaurants (
+    restaurant_id   INT PRIMARY KEY AUTO_INCREMENT,
+    restaurant_name VARCHAR(150) NOT NULL,
+    cuisine_type    VARCHAR(50),
+    city            VARCHAR(50),
+    rating          DECIMAL(2,1),
+    opening_time    TIME,
+    closing_time    TIME
+);
+
+-- Menu Items Table
+CREATE TABLE IF NOT EXISTS menu_items (
+    item_id         INT PRIMARY KEY AUTO_INCREMENT,
+    restaurant_id   INT,
+    item_name       VARCHAR(100) NOT NULL,
+    category        VARCHAR(50),
+    price           DECIMAL(8,2),
+    is_available    BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id)
+);
+
+-- Delivery Agents Table
+CREATE TABLE IF NOT EXISTS delivery_agents (
+    agent_id        INT PRIMARY KEY AUTO_INCREMENT,
+    agent_name      VARCHAR(100) NOT NULL,
+    phone           VARCHAR(20),
+    city            VARCHAR(50),
+    vehicle_type    VARCHAR(30),
+    is_active       BOOLEAN DEFAULT TRUE
+);
+
+-- Orders Table
+CREATE TABLE IF NOT EXISTS orders (
+    order_id        INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id     INT,
+    restaurant_id   INT,
+    agent_id        INT,
+    order_date      DATE NOT NULL,
+    order_time      TIME,
+    delivery_time_minutes INT,
+    order_amount    DECIMAL(10,2),
+    discount        DECIMAL(8,2) DEFAULT 0,
+    payment_method  VARCHAR(30),
+    order_status    VARCHAR(20) DEFAULT 'Delivered',
+    city            VARCHAR(50),
+    FOREIGN KEY (customer_id)   REFERENCES customers(customer_id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id),
+    FOREIGN KEY (agent_id)      REFERENCES delivery_agents(agent_id)
+);
+
+-- Order Items Table
+CREATE TABLE IF NOT EXISTS order_items (
+    order_item_id   INT PRIMARY KEY AUTO_INCREMENT,
+    order_id        INT,
+    item_id         INT,
+    quantity        INT DEFAULT 1,
+    unit_price      DECIMAL(8,2),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (item_id)  REFERENCES menu_items(item_id)
+);
+
+-- ============================================================
+-- PHASE 2: SAMPLE DATA INSERTION
+-- ============================================================
+
+INSERT INTO customers (customer_name, email, phone, city, registration_date) VALUES
+('Aarav Sharma',    'aarav@email.com',   '9876543210', 'Mumbai',    '2023-01-15'),
+('Priya Patel',     'priya@email.com',   '9876543211', 'Delhi',     '2023-02-20'),
+('Rohan Mehta',     'rohan@email.com',   '9876543212', 'Bangalore', '2023-03-10'),
+('Sneha Reddy',     'sneha@email.com',   '9876543213', 'Hyderabad', '2023-04-05'),
+('Kiran Joshi',     'kiran@email.com',   '9876543214', 'Pune',      '2023-05-18'),
+('Anjali Singh',    'anjali@email.com',  '9876543215', 'Chennai',   '2023-06-22'),
+('Vikram Nair',     'vikram@email.com',  '9876543216', 'Mumbai',    '2023-07-14'),
+('Divya Gupta',     'divya@email.com',   '9876543217', 'Delhi',     '2023-08-30'),
+('Arjun Kumar',     'arjun@email.com',   '9876543218', 'Bangalore', '2023-09-09'),
+('Meera Das',       'meera@email.com',   '9876543219', 'Kolkata',   '2023-10-01');
+
+INSERT INTO restaurants (restaurant_name, cuisine_type, city, rating) VALUES
+('Spice Garden',      'Indian',    'Mumbai',    4.5),
+('Pizza Palace',      'Italian',   'Delhi',     4.2),
+('Dragon Wok',        'Chinese',   'Bangalore', 4.7),
+('Biryani House',     'Indian',    'Hyderabad', 4.8),
+('Burger Barn',       'American',  'Pune',      4.0),
+('Sushi World',       'Japanese',  'Mumbai',    4.6),
+('Taco Fiesta',       'Mexican',   'Chennai',   3.9),
+('The Pasta Place',   'Italian',   'Delhi',     4.3),
+('Kebab Corner',      'Middle Eastern','Bangalore',4.4),
+('South Spice',       'South Indian','Hyderabad',4.9);
+
+INSERT INTO delivery_agents (agent_name, phone, city, vehicle_type) VALUES
+('Ramesh Kumar',  '9000000001', 'Mumbai',    'Bike'),
+('Suresh Patel',  '9000000002', 'Delhi',     'Bike'),
+('Mahesh Nair',   '9000000003', 'Bangalore', 'Scooter'),
+('Ganesh Reddy',  '9000000004', 'Hyderabad', 'Bike'),
+('Lokesh Singh',  '9000000005', 'Pune',      'Bicycle');
+
+INSERT INTO orders (customer_id, restaurant_id, agent_id, order_date, order_time, delivery_time_minutes, order_amount, discount, payment_method, order_status, city) VALUES
+(1,  1, 1, '2024-01-05', '12:30:00', 30,  450.00,  50.00,  'UPI',         'Delivered', 'Mumbai'),
+(2,  2, 2, '2024-01-06', '13:00:00', 45,  620.00,  0.00,   'Card',        'Delivered', 'Delhi'),
+(3,  3, 3, '2024-01-07', '14:15:00', 25,  350.00,  20.00,  'Cash',        'Delivered', 'Bangalore'),
+(4,  4, 4, '2024-01-08', '11:45:00', 50,  980.00,  100.00, 'UPI',         'Delivered', 'Hyderabad'),
+(5,  5, 5, '2024-01-09', '19:00:00', 35,  275.00,  0.00,   'Wallet',      'Delivered', 'Pune'),
+(6,  6, 1, '2024-01-10', '20:30:00', 40,  1200.00, 150.00, 'Card',        'Delivered', 'Mumbai'),
+(7,  7, 2, '2024-01-11', '18:00:00', 60,  410.00,  0.00,   'Cash',        'Delivered', 'Chennai'),
+(8,  8, 3, '2024-01-12', '12:00:00', 28,  540.00,  50.00,  'UPI',         'Delivered', 'Delhi'),
+(9,  9, 4, '2024-01-13', '21:00:00', 55,  870.00,  80.00,  'Card',        'Delivered', 'Bangalore'),
+(10,10, 5, '2024-01-14', '13:30:00', 20,  320.00,  0.00,   'UPI',         'Delivered', 'Hyderabad'),
+(1,  2, 1, '2024-02-01', '14:00:00', 33,  500.00,  0.00,   'Card',        'Delivered', 'Mumbai'),
+(3,  4, 3, '2024-02-05', '15:00:00', 48,  1100.00, 100.00, 'UPI',         'Delivered', 'Bangalore'),
+(5,  6, 5, '2024-02-10', '19:30:00', 52,  760.00,  60.00,  'Cash',        'Delivered', 'Pune'),
+(2,  8, 2, '2024-02-15', '12:45:00', 22,  430.00,  0.00,   'Wallet',      'Delivered', 'Delhi'),
+(4, 10, 4, '2024-02-20', '11:00:00', 18,  290.00,  30.00,  'UPI',         'Delivered', 'Hyderabad');
+
+-- ============================================================
+-- PHASE 3: BASIC DATA EXPLORATION
+-- ============================================================
+
+-- View all orders
+SELECT * FROM orders;
+
+-- Total number of orders
+SELECT COUNT(*) AS total_orders FROM orders;
+
+-- Total revenue generated
+SELECT SUM(order_amount) AS total_revenue FROM orders;
+
+-- Average order value
+SELECT ROUND(AVG(order_amount), 2) AS avg_order_value FROM orders;
+
+-- Orders by payment method
+SELECT payment_method, COUNT(*) AS order_count
+FROM orders
+GROUP BY payment_method
+ORDER BY order_count DESC;
+
+-- ============================================================
+-- PHASE 4: CUSTOMER ANALYSIS
+-- ============================================================
+
+-- Top 5 customers by total spending
+SELECT
+    c.customer_name,
+    c.city,
+    COUNT(o.order_id)               AS total_orders,
+    SUM(o.order_amount)             AS total_spent,
+    ROUND(AVG(o.order_amount), 2)   AS avg_order_value
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name, c.city
+ORDER BY total_spent DESC
+LIMIT 5;
+
+-- Customer order frequency
+SELECT
+    c.customer_name,
+    COUNT(o.order_id) AS order_count,
+    CASE
+        WHEN COUNT(o.order_id) >= 5 THEN 'Frequent'
+        WHEN COUNT(o.order_id) >= 3 THEN 'Regular'
+        ELSE 'Occasional'
+    END AS customer_type
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name
+ORDER BY order_count DESC;
+
+-- City-wise customer count
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+GROUP BY city
+ORDER BY customer_count DESC;
+
+-- ============================================================
+-- PHASE 5: RESTAURANT & REVENUE ANALYSIS
+-- ============================================================
+
+-- Top 10 restaurants by revenue
+SELECT
+    r.restaurant_name,
+    r.cuisine_type,
+    r.city,
+    COUNT(o.order_id)           AS total_orders,
+    SUM(o.order_amount)         AS total_revenue,
+    ROUND(AVG(o.order_amount),2)AS avg_order_value,
+    r.rating
+FROM restaurants r
+JOIN orders o ON r.restaurant_id = o.restaurant_id
+GROUP BY r.restaurant_id, r.restaurant_name, r.cuisine_type, r.city, r.rating
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+-- Revenue by cuisine type
+SELECT
+    r.cuisine_type,
+    COUNT(o.order_id)   AS total_orders,
+    SUM(o.order_amount) AS total_revenue
+FROM restaurants r
+JOIN orders o ON r.restaurant_id = o.restaurant_id
+GROUP BY r.cuisine_type
+ORDER BY total_revenue DESC;
+
+-- City-wise total orders and revenue
+SELECT
+    o.city,
+    COUNT(o.order_id)           AS total_orders,
+    SUM(o.order_amount)         AS total_revenue,
+    ROUND(AVG(o.order_amount),2)AS avg_order_value
+FROM orders o
+GROUP BY o.city
+ORDER BY total_revenue DESC;
+
+-- ============================================================
+-- PHASE 6: DELIVERY PERFORMANCE ANALYSIS
+-- ============================================================
+
+-- Average delivery time by city
+SELECT
+    city,
+    ROUND(AVG(delivery_time_minutes), 2) AS avg_delivery_time_mins,
+    MIN(delivery_time_minutes)           AS fastest_delivery,
+    MAX(delivery_time_minutes)           AS slowest_delivery
+FROM orders
+GROUP BY city
+ORDER BY avg_delivery_time_mins;
+
+-- Delivery agent performance
+SELECT
+    da.agent_name,
+    da.vehicle_type,
+    COUNT(o.order_id)                        AS total_deliveries,
+    ROUND(AVG(o.delivery_time_minutes), 2)   AS avg_delivery_time
+FROM delivery_agents da
+JOIN orders o ON da.agent_id = o.agent_id
+GROUP BY da.agent_id, da.agent_name, da.vehicle_type
+ORDER BY avg_delivery_time;
+
+-- Orders with delivery time above 45 minutes (delayed)
+SELECT
+    o.order_id,
+    c.customer_name,
+    r.restaurant_name,
+    o.delivery_time_minutes,
+    o.order_date
+FROM orders o
+JOIN customers c    ON o.customer_id    = c.customer_id
+JOIN restaurants r  ON o.restaurant_id  = r.restaurant_id
+WHERE o.delivery_time_minutes > 45
+ORDER BY o.delivery_time_minutes DESC;
+
+-- ============================================================
+-- PHASE 7: ADVANCED QUERIES & BUSINESS INSIGHTS
+-- ============================================================
+
+-- Monthly revenue trend
+SELECT
+    DATE_FORMAT(order_date, '%Y-%m') AS month,
+    COUNT(order_id)                  AS total_orders,
+    SUM(order_amount)                AS total_revenue
+FROM orders
+GROUP BY month
+ORDER BY month;
+
+-- High value orders (above 1000)
+SELECT
+    o.order_id,
+    c.customer_name,
+    r.restaurant_name,
+    o.order_amount,
+    o.order_date,
+    o.city
+FROM orders o
+JOIN customers c   ON o.customer_id   = c.customer_id
+JOIN restaurants r ON o.restaurant_id = r.restaurant_id
+WHERE o.order_amount > 1000
+ORDER BY o.order_amount DESC;
+
+-- Discount impact analysis
+SELECT
+    CASE
+        WHEN discount = 0       THEN 'No Discount'
+        WHEN discount <= 50     THEN 'Low Discount (1-50)'
+        WHEN discount <= 100    THEN 'Medium Discount (51-100)'
+        ELSE 'High Discount (100+)'
+    END AS discount_category,
+    COUNT(*)            AS order_count,
+    SUM(order_amount)   AS total_revenue,
+    ROUND(AVG(order_amount),2) AS avg_order_value
+FROM orders
+GROUP BY discount_category
+ORDER BY total_revenue DESC;
+
+-- Repeat customers (ordered more than once)
+SELECT
+    c.customer_name,
+    c.city,
+    COUNT(o.order_id)   AS total_orders,
+    SUM(o.order_amount) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name, c.city
+HAVING total_orders > 1
+ORDER BY total_orders DESC;
+
+-- Best performing day of week
+SELECT
+    DAYNAME(order_date) AS day_of_week,
+    COUNT(order_id)     AS total_orders,
+    SUM(order_amount)   AS total_revenue
+FROM orders
+GROUP BY day_of_week
+ORDER BY total_revenue DESC;
+
+-- ============================================================
+-- PHASE 8: PERFORMANCE OPTIMIZATION – INDEXES
+-- ============================================================
+
+-- Index on order_date (for date-range queries)
+CREATE INDEX idx_order_date
+    ON orders(order_date);
+
+-- Index on customer_name (for customer search queries)
+CREATE INDEX idx_customer_name
+    ON customers(customer_name);
+
+-- Index on restaurant_name (for restaurant lookup queries)
+CREATE INDEX idx_restaurant_name
+    ON restaurants(restaurant_name);
+
+-- Index on city in orders (for city-wise filtering)
+CREATE INDEX idx_orders_city
+    ON orders(city);
+
+-- Index on order_amount (for high-value order queries)
+CREATE INDEX idx_order_amount
+    ON orders(order_amount);
+
+-- View all indexes on the orders table
+SHOW INDEX FROM orders;
+SHOW INDEX FROM customers;
+SHOW INDEX FROM restaurants;
+
+-- Test query performance using EXPLAIN
+EXPLAIN SELECT * FROM orders WHERE order_date = '2024-01-05';
+EXPLAIN SELECT * FROM customers WHERE customer_name = 'Aarav Sharma';
+
+-- ============================================================
+-- PHASE 9: TRIGGERS – AUTOMATION & DATA INTEGRITY
+-- ============================================================
+
+-- ---------------------------------------------------------
+-- Trigger 1: Log High Value Orders (amount > 1000)
+-- ---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS high_value_orders_log (
+    log_id          INT PRIMARY KEY AUTO_INCREMENT,
+    order_id        INT,
+    customer_id     INT,
+    order_amount    DECIMAL(10,2),
+    order_date      DATE,
+    logged_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_high_value_orders
+AFTER INSERT ON orders
+FOR EACH ROW
+BEGIN
+    IF NEW.order_amount > 1000 THEN
+        INSERT INTO high_value_orders_log
+            (order_id, customer_id, order_amount, order_date)
+        VALUES
+            (NEW.order_id, NEW.customer_id, NEW.order_amount, NEW.order_date);
+    END IF;
+END;
+
+-- ---------------------------------------------------------
+-- Trigger 2: Prevent Negative Discount Values
+-- ---------------------------------------------------------
+
+CREATE TRIGGER trg_prevent_negative_discount
+BEFORE INSERT ON orders
+FOR EACH ROW
+BEGIN
+    IF NEW.discount < 0 THEN
+        SET NEW.discount = 0;
+    END IF;
+END;
+
+-- ---------------------------------------------------------
+-- Trigger 3: Log Delayed Deliveries (> 45 minutes)
+-- ---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS delivery_delay_log (
+    log_id                  INT PRIMARY KEY AUTO_INCREMENT,
+    order_id                INT,
+    customer_id             INT,
+    restaurant_id           INT,
+    delivery_time_minutes   INT,
+    order_date              DATE,
+    logged_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_delivery_delay_warning
+AFTER INSERT ON orders
+FOR EACH ROW
+BEGIN
+    IF NEW.delivery_time_minutes > 45 THEN
+        INSERT INTO delivery_delay_log
+            (order_id, customer_id, restaurant_id, delivery_time_minutes, order_date)
+        VALUES
+            (NEW.order_id, NEW.customer_id, NEW.restaurant_id,
+             NEW.delivery_time_minutes, NEW.order_date);
+    END IF;
+END;
+
+-- ============================================================
+-- TRIGGER TESTING
+-- ============================================================
+
+-- Test 1: Insert high-value order (should appear in high_value_orders_log)
+INSERT INTO orders
+    (customer_id, restaurant_id, agent_id, order_date, order_time,
+     delivery_time_minutes, order_amount, discount, payment_method, order_status, city)
+VALUES
+    (1, 1, 1, '2024-03-01', '13:00:00', 30, 1500.00, 0, 'UPI', 'Delivered', 'Mumbai');
+
+-- Test 2: Insert order with negative discount (discount should be saved as 0)
+INSERT INTO orders
+    (customer_id, restaurant_id, agent_id, order_date, order_time,
+     delivery_time_minutes, order_amount, discount, payment_method, order_status, city)
+VALUES
+    (2, 2, 2, '2024-03-02', '14:00:00', 25, 400.00, -50, 'Card', 'Delivered', 'Delhi');
+
+-- Test 3: Insert delayed order (should appear in delivery_delay_log)
+INSERT INTO orders
+    (customer_id, restaurant_id, agent_id, order_date, order_time,
+     delivery_time_minutes, order_amount, discount, payment_method, order_status, city)
+VALUES
+    (3, 3, 3, '2024-03-03', '15:00:00', 65, 550.00, 0, 'Cash', 'Delivered', 'Bangalore');
+
+-- Verify trigger results
+SELECT * FROM high_value_orders_log;
+SELECT * FROM delivery_delay_log;
+SELECT order_id, discount FROM orders WHERE order_date = '2024-03-02';  -- discount should be 0
+
+-- ============================================================
+-- DASHBOARD QUERIES (Export these results to Google Sheets)
+-- ============================================================
+
+-- KPI 1: Total Revenue
+SELECT SUM(order_amount) AS total_revenue FROM orders;
+
+-- KPI 2: Total Orders
+SELECT COUNT(order_id) AS total_orders FROM orders;
+
+-- KPI 3: Average Order Value
+SELECT ROUND(AVG(order_amount), 2) AS avg_order_value FROM orders;
+
+-- KPI 4: Average Delivery Time
+SELECT ROUND(AVG(delivery_time_minutes), 2) AS avg_delivery_time FROM orders;
+
+-- Chart 1: City-wise Total Orders (Pie Chart)
+SELECT city, COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY city
+ORDER BY total_orders DESC;
+
+-- Chart 2: Top 10 Restaurants by Revenue (Bar Chart)
+SELECT
+    r.restaurant_name,
+    SUM(o.order_amount) AS total_revenue
+FROM restaurants r
+JOIN orders o ON r.restaurant_id = o.restaurant_id
+GROUP BY r.restaurant_name
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+-- Chart 3: City-wise Average Delivery Time (3D Pie Chart)
+SELECT city, ROUND(AVG(delivery_time_minutes), 2) AS avg_delivery_time
+FROM orders
+GROUP BY city
+ORDER BY avg_delivery_time;
+
+-- Chart 4: Monthly Revenue Trend (Line Chart)
+SELECT
+    DATE_FORMAT(order_date, '%Y-%m') AS month,
+    SUM(order_amount)                AS total_revenue
+FROM orders
+GROUP BY month
+ORDER BY month;
+
+-- Chart 5: Payment Method Distribution (Donut Chart)
+SELECT payment_method, COUNT(*) AS order_count
+FROM orders
+GROUP BY payment_method
+ORDER BY order_count DESC;
+
+-- ============================================================
+-- END OF PROJECT
+-- ============================================================
